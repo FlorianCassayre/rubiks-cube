@@ -53,6 +53,12 @@ case class RubiksCube private (size: Int, private val pieces: Map[Vec, Color]) {
     new RubiksCube(size, newPieces)
   }
 
+  def turn(move: RubiksCubeGeneralMove): RubiksCube =
+    turn(move.axis, move.layer, move.turns)
+
+  def turns(moves: Seq[RubiksCubeGeneralMove]): RubiksCube =
+    moves.foldLeft(this)((that, move) => that.turn(move))
+
   private def to2d: Seq[Seq[Option[Color]]] =
     val range = RubiksCube.range(size)
     val (min, max) = (range.min - 1, range.max + 1)

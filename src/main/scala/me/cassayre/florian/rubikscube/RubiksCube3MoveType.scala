@@ -1,0 +1,15 @@
+package me.cassayre.florian.rubikscube
+
+object RubiksCube3MoveType {
+  private val Tokens = RubiksCube3MoveType.values.map(e => e.char -> e).toMap
+  def parse(s: Char): Option[RubiksCube3MoveType] = Tokens.get(s)
+}
+
+enum RubiksCube3MoveType(val char: Char, val axis: Vec) {
+  case Up extends RubiksCube3MoveType('U', Vec(0, 0, 1))
+  case Down extends RubiksCube3MoveType('D', Vec(0, 0, -1))
+  case Left extends RubiksCube3MoveType('L', Vec(-1, 0, 0))
+  case Right extends RubiksCube3MoveType('R', Vec(1, 0, 0))
+  case Front extends RubiksCube3MoveType('F', Vec(0, -1, 0))
+  case Back extends RubiksCube3MoveType('B', Vec(0, 1, 0))
+}
