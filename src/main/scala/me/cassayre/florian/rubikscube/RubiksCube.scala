@@ -1,5 +1,7 @@
 package me.cassayre.florian.rubikscube
 
+import me.cassayre.florian.rubikscube.RubiksCube.range
+
 object RubiksCube {
   def apply(size: Int): RubiksCube = {
     require(size > 0)
@@ -23,6 +25,34 @@ case class RubiksCube private (size: Int, private val pieces: Map[Vec, Color]) {
   def edgesCount: Int = if size > 2 then size - 2 else 0
   def hasEdges: Boolean = edgesCount > 0
 
+  def turn(axis: Vec, layer: Int, turns: Int): RubiksCube = {
+    require((0 until size).contains(layer))
+    val rotation = axis.withRotation(turns)
+    val range = RubiksCube.range(size)
+    val coordinatesMatch = axis.toSeq.map {
+      case 0 => None
+      case v => // -1 or 1
+        val actualLayer = if v > 0 then layer else size - 1 - layer
+        val last = size - 1
+        val additionalSign = actualLayer match {
+          case 0 => Some(-1)
+          case `last` => Some(1)
+          case _ => None
+        }
+        val rangedV = range(actualLayer)
+        Some(Set(rangedV) ++ additionalSign.map(rangedV + _))
+    }
+    val newPieces = pieces.map { (piece, color) =>
+      val newPiece =
+        if coordinatesMatch.zip(piece.toSeq).forall((o, v) => o.forall(_.contains(v))) then
+          rotation(piece)
+        else
+          piece
+      newPiece -> color
+    }
+    new RubiksCube(size, newPieces)
+  }
+
   private def to2d: Seq[Seq[Option[Color]]] =
     val range = RubiksCube.range(size)
     val (min, max) = (range.min - 1, range.max + 1)
@@ -30,7 +60,7 @@ case class RubiksCube private (size: Int, private val pieces: Map[Vec, Color]) {
       range.map(y => range.map(x => pieces(xyToVec(x, y))))
     def invertRange(v: Int): Int = range.min + range.max - v
     val white = face((x, y) => Vec(x, invertRange(y), max))
-    val orange = face((x, y) => Vec(min, invertRange(y), x))
+    val orange = face((x, y) => Vec(min, invertRange(x), invertRange(y)))
     val green = face((x, y) => Vec(x, min, invertRange(y)))
     val red = face((x, y) => Vec(max, x, invertRange(y)))
     val blue = face((x, y) => Vec(invertRange(x), max, invertRange(y)))
