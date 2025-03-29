@@ -19,11 +19,13 @@ object RubiksCube {
   private def range(size: Int): Range = -size / 2 until (size + 1) / 2
 }
 
-case class RubiksCube private (size: Int, private val pieces: Map[Vec, Color]) {
+case class RubiksCube private (size: Int, pieces: Map[Vec, Color]) {
   def hasCenter: Boolean = size % 2 != 0
   def hasCorners: Boolean = size > 1
   def edgesCount: Int = if size > 2 then size - 2 else 0
   def hasEdges: Boolean = edgesCount > 0
+
+  def apply(vec: Vec): Color = pieces(vec)
 
   def turn(axis: Vec, layer: Int, turns: Int): RubiksCube = {
     require((0 until size).contains(layer))

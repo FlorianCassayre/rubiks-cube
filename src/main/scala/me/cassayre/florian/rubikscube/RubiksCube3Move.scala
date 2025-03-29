@@ -1,6 +1,12 @@
 package me.cassayre.florian.rubikscube
 
 object RubiksCube3Move {
+  val All: Set[RubiksCube3Move] =
+    for
+      moveType <- RubiksCube3MoveType.values.toSet
+        rotation <- RubiksCubeMoveRotation.values
+    yield RubiksCube3Move(moveType, rotation)
+
   def parse(s: String): Seq[RubiksCube3Move] = {
     def parseRecursive(tokens: Seq[Char], result: Seq[RubiksCube3Move]): Seq[RubiksCube3Move] = tokens match {
       case a +: b +: tail =>
