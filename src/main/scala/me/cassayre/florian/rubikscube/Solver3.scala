@@ -11,41 +11,52 @@ object Solver3 {
   def apply(cube: RubiksCube): RubiksCube = {
     require(cube.size == 3)
     printDebug("Initial")
-      .andThen(solveFirstCross)
-      .andThen(printDebug("After first cross"))
-      .andThen(solveFirstCorners)
-      .andThen(printDebug("After first corners"))
+      .andThen(solveFirstFace)
+      .andThen(printDebug("After first face"))
       .apply(cube)
   }
 
-  private def solveFirstCross(cube: RubiksCube): RubiksCube = {
-    def solveFirstCrossRecursive(cube: RubiksCube): RubiksCube = {
-      val count = evaluateFirstCross(cube)
-      if count == Four then
-        cube
-      else
-        val better = exploreAll(4).view.map(moves => cube.turns(moves.map(_.generalize))).filter(cube => evaluateFirstCross(cube) > count).head
-        solveFirstCrossRecursive(better)
+  private def solveFirstFace(cube: RubiksCube): RubiksCube = {
+    def solveFirstFaceRecursive(cube: RubiksCube): RubiksCube = {
+      evaluateFirstFace(cube) match
+        case Some(seq) =>
+          println(seq)
+          println(cube)
+          val better = exploreAll(4)
+            .map(moves => cube.turns(moves.map(_.generalize)))
+            .filter(cube => isGreater(evaluateFirstFace(cube), Some(seq)))
+            .head
+          solveFirstFaceRecursive(better)
+        case None => cube
     }
-    solveFirstCrossRecursive(cube)
+    solveFirstFaceRecursive(cube)
+  }
+
+  private def isGreater(a: Option[Seq[Int]], b: Option[Seq[Int]]): Boolean = {
+    (a, b) match
+      case (Some(av), Some(bv)) => av.zip(bv).find(_ != _).exists(_ > _)
+      case (None, Some(_)) => true
+      case (_, None) => false
+  }
+
+  private def evaluateFirstFace(cube: RubiksCube): Option[Seq[Int]] = {
+    // (cross, available_edge, corners, available_cross)
+    def booleanToInt(b: Boolean): Int = if b then 1 else 0
+    val sides = cross.flatMap((x, y) => (-1 to 1 by 2).map(i => Vec(x * Face + (1 - x.abs) * i, y * Face + (1 - y.abs) * i, 0)))
+    val a = evaluateFirstCross(cube)
+    val b =
+      cross.exists((x, y) => cube(Vec(x, y, Face)) == BottomColor) ||
+        sides.exists(v => cube(v) == BottomColor)
+    val c = evaluateFirstCorners(cube)
+    val d = sides.map(_.copy(z = 1)).exists(v => cube(v) == BottomColor)
+    if a < Four || c < Four then
+      Some(Seq(a, booleanToInt(b), c, booleanToInt(d)))
+    else
+      None
   }
 
   private def evaluateFirstCross(cube: RubiksCube): Int =
     cross.count((x, y) => cube(Vec(x, y, -Face)) == BottomColor && (-1 to 0).map(i => cube(Vec(x * Face, y * Face, i))).toSet.sizeIs == 1)
-
-  private def solveFirstCorners(cube: RubiksCube): RubiksCube = {
-    require(evaluateFirstCross(cube) == Four)
-    def solveFirstCornersRecursive(cube: RubiksCube): RubiksCube = {
-      val count = evaluateFirstCorners(cube)
-      if count == Four then
-        cube
-      else
-        // Incorrect, can require more
-        val better = View(4, 5).flatMap(exploreAll).map(moves => cube.turns(moves.map(_.generalize))).filter(cube => evaluateFirstCross(cube) == Four).filter(cube => evaluateFirstCorners(cube) > count).head
-        solveFirstCornersRecursive(better)
-    }
-    solveFirstCornersRecursive(cube)
-  }
 
   private def evaluateFirstCorners(cube: RubiksCube): Int =
     corners.count((x, y) => cube(Vec(x, y, -Face)) == BottomColor && cube(Vec(x * Face, y, -1)) == cube(Vec(x * Face, 0, 0)) && cube(Vec(x, y * Face, -1)) == cube(Vec(0, y * Face, 0)))
