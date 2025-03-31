@@ -22,7 +22,7 @@ object Solver3 {
         case Some(seq) =>
           println(seq)
           println(cube)
-          val better = exploreAll(4)
+          val better = (3 to 4).view.flatMap(exploreAll)
             .map(moves => cube.turns(moves.map(_.generalize)))
             .filter(cube => isGreater(evaluateFirstFace(cube), Some(seq)))
             .head

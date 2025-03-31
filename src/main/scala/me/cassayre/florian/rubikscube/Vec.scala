@@ -25,12 +25,15 @@ case class Vec(x: Int, y: Int, z: Int) {
       case 2 => (-1, 0)
       case 3 => (0, -1)
     }
-    v => {
-      val d = this.dot(v)
-      val c = this.cross(v)
-      val p = this * d
-      val t = v + (this * -d)
-      p + (t * cos) + (c * sin)
+    val v = Vec(1 to 3)
+    val d = this.dot(v)
+    val c = this.cross(v)
+    val p = this * d
+    val t = v + (this * -d)
+    val vr = (p + (t * cos) + (c * sin)).toSeq.map(value => (value.abs - 1, value.sign))
+    w => {
+      val seq = w.toSeq
+      Vec(vr.map((value, sign) => seq(value) * sign))
     }
   }
   def toSeq: IndexedSeq[Int] = IndexedSeq(x, y, z)
