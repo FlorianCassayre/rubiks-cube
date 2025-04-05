@@ -1,19 +1,70 @@
 package me.cassayre.florian.rubikscube
 
-import scala.collection.View
-
 object Solver3 {
   private val Four: Int = 4
 
   private val Face: Int = 2
-  private val BottomColor: Color = RubiksCubeLayout.Colors(Vec(0, 0, -1))
+  private val Z: Vec = RubiksCube3MoveType.Up.axis
+  private val BottomColor: Color = RubiksCubeLayout.Colors(-Z)
+  private val TopColor: Color = RubiksCubeLayout.Colors(Z)
 
   def apply(cube: RubiksCube): RubiksCube = {
     require(cube.size == 3)
     printDebug("Initial")
       .andThen(solveFirstFace)
       .andThen(printDebug("After first face"))
+      .andThen(solveSecondLayer)
+      .andThen(printDebug("After second layer"))
       .apply(cube)
+  }
+
+  private def solveSecondLayer(cube: RubiksCube): RubiksCube = {
+    def solveSecondLayerRecursive(cube: RubiksCube): RubiksCube = {
+      println(cube)
+      println()
+      // Also indicates whether this edge is not a top edge
+      val incorrectlyPlacedRight = cross.flatMap { (x, y) =>
+        val frontFace = Vec(x, y, 0)
+        val expectedFront = RubiksCubeLayout.Colors(frontFace)
+        val rightFace = Z.withRotation(1)(frontFace)
+        val expectedRight = RubiksCubeLayout.Colors(rightFace)
+        val frontValue = cube(frontFace * Face + rightFace)
+        val rightValue = cube(rightFace * Face + frontFace)
+        if expectedFront == frontValue && expectedRight == rightValue then
+          None
+        else
+          Some((frontFace, !Set(frontValue, rightValue).contains(TopColor)))
+      }.toSeq
+      if incorrectlyPlacedRight.isEmpty then
+        cube
+      else
+        // (side, top)
+        val topEdges = cross.map((x, y) => (x, y) -> (cube(Vec(x * Face, y * Face, 1)), cube(Vec(x, y, Face))))
+        val candidatesTop = topEdges.filter { case (_, (a, b)) => !Set(a, b).contains(TopColor) }.toSeq
+        val rightAlgorithm = RubiksCube3Move.parse("U R U' R' U' F' U F") // Assumes the edge color matches the face it's currently on (we can later improve this to save a move)
+        val leftAlgorithm = RubiksCube3Move.parse("U' L' U L U F U' F'") // TODO combine those
+        val finalAlgorithm = candidatesTop match {
+          case ((x, y), (side, top)) +: _ =>
+            val targetFace = RubiksCubeLayout.ColorsReverse(side)
+            val algorithm = {
+              val product = targetFace.cross(RubiksCubeLayout.ColorsReverse(top))
+              if product == -Z then leftAlgorithm else if product == Z then rightAlgorithm else throw new IllegalStateException()
+            }
+            val initialMove = RubiksCubeMoveRotation.values.find(rotation => Z.withRotation(rotation.turns)(Vec(x, y, 0)) == targetFace)
+              .map(rotation => RubiksCube3Move(RubiksCube3MoveType.Up, rotation))
+            val algorithmRotation = RubiksCubeMoveRotation.values.find(rotation => Z.withRotation(rotation.turns)(RubiksCube3MoveType.Front.axis) == targetFace)
+              .map(rotation => rotation.turns).getOrElse(0)
+            initialMove.map(_.generalize).toSeq ++ algorithm.map(move => move.generalize.rotate(Z, algorithmRotation))
+          case _ =>
+            // Normally guaranteed that there is one
+            val face = incorrectlyPlacedRight.collect { case (v, true) => v }.head
+            val algorithmRotation = RubiksCubeMoveRotation.values.find(rotation => Z.withRotation(rotation.turns)(RubiksCube3MoveType.Front.axis) == face)
+              .map(rotation => rotation.turns).getOrElse(0)
+            rightAlgorithm.map(move => move.generalize.rotate(Z, algorithmRotation))
+        }
+        solveSecondLayerRecursive(cube.turns(finalAlgorithm))
+    }
+    solveSecondLayerRecursive(cube)
   }
 
   private def solveFirstFace(cube: RubiksCube): RubiksCube = {

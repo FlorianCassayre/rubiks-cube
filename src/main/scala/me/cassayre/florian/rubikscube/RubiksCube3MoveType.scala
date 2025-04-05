@@ -1,8 +1,10 @@
 package me.cassayre.florian.rubikscube
 
 object RubiksCube3MoveType {
-  private val Tokens = RubiksCube3MoveType.values.map(e => e.char -> e).toMap
+  private val Tokens = values.map(e => e.char -> e).toMap
+  private val Axis = values.map(e => e.axis -> e).toMap
   def parse(s: Char): Option[RubiksCube3MoveType] = Tokens.get(s)
+  def from(axis: Vec): RubiksCube3MoveType = Axis(axis)
 }
 
 enum RubiksCube3MoveType(val char: Char, val axis: Vec) {

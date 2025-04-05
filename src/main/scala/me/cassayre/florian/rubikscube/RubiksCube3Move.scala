@@ -19,8 +19,11 @@ object RubiksCube3Move {
     }
     parseRecursive(s.replace(" ", ""), Seq.empty).reverse
   }
+  //def from(move: RubiksCubeGeneralMove): Option[RubiksCube3Move] = ??? // TODO
 }
 
 case class RubiksCube3Move(moveType: RubiksCube3MoveType, rotation: RubiksCubeMoveRotation = RubiksCubeMoveRotation.Clockwise) {
   def generalize: RubiksCubeGeneralMove = RubiksCubeGeneralMove(moveType.axis, 2, rotation.turns)
+  def inverse: RubiksCube3Move = copy(rotation = rotation.inverse)
+  override def toString: String = (Seq(moveType.char) ++ rotation.char.toSeq).mkString
 }

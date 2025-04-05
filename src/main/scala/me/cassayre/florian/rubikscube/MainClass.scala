@@ -7,7 +7,7 @@ object MainClass {
 
   @main
   def main(): Unit = {
-    given random: Random = new Random()
+    given random: Random = new Random(26)
     val cube = RubiksCubeRandomizer.randomized(RubiksCube(Size), 1000)
     val solved = Solver3(cube)
     //println(solved)

@@ -9,6 +9,7 @@ object RubiksCubeLayout {
     Vec(0, 0, 1) -> Color.White,
     Vec(0, 0, -1) -> Color.Yellow,
   )
+  val ColorsReverse: Map[Color, Vec] = Colors.map(_.swap)
 
   val Faces: Set[Vec] = Colors.keySet
 
