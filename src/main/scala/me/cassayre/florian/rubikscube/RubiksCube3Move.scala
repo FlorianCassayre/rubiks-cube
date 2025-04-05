@@ -22,5 +22,5 @@ object RubiksCube3Move {
 }
 
 case class RubiksCube3Move(moveType: RubiksCube3MoveType, rotation: RubiksCubeMoveRotation = RubiksCubeMoveRotation.Clockwise) {
-  def generalize: RubiksCubeGeneralMove = RubiksCubeGeneralMove(moveType.axis, 0, rotation.turns)
+  def generalize: RubiksCubeGeneralMove = RubiksCubeGeneralMove(moveType.axis, 2, rotation.turns)
 }
