@@ -58,7 +58,7 @@ case class RubiksCube private (size: Int, pieces: Map[Vec, Color]) {
   def turn(move: RubiksCubeGeneralMove): RubiksCube =
     turn(move.axis, move.layer, move.turns)
 
-  def turns(moves: Seq[RubiksCubeGeneralMove]): RubiksCube =
+  def turns(moves: Iterable[RubiksCubeGeneralMove]): RubiksCube =
     moves.foldLeft(this)((that, move) => that.turn(move))
 
   private def to2d: Seq[Seq[Option[Color]]] =

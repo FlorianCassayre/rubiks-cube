@@ -15,13 +15,59 @@ object Solver3 {
       .andThen(printDebug("After first face"))
       .andThen(solveSecondLayer)
       .andThen(printDebug("After second layer"))
+      .andThen(solveThirdLayerEdgeOrientation)
+      .andThen(printDebug("After third layer edge orientation"))
+      .andThen(solveThirdLayerEdgePlacement)
+      .andThen(printDebug("After third layer edge placement"))
       .apply(cube)
+  }
+
+  private def solveThirdLayerEdgePlacement(cube: RubiksCube): RubiksCube = {
+    val algorithm = RubiksCube3Move.parse("R U R' U R U2 R' U2")
+    def solveThirdLayerEdgePlacementRecursive(cube: RubiksCube): RubiksCube = {
+      val placements = cross.map((x, y) => Vec(x, y, 0) -> cube(Vec(x * Face, y * Face, 1)))
+      val targetPlacement = RubiksCubeLayout.Colors.view.filterKeys(_.z == 0).toMap
+      val rotations = RubiksCubeMoveRotation.All.map(_.map(_.turns).getOrElse(0))
+      val correctlyPlaced = rotations.map(turns =>
+        turns -> placements.collect { case (face, color) if targetPlacement(Z.withRotation(turns)(face)) == color => face }
+      )
+      val solved = correctlyPlaced.collectFirst { case (turns, placed) if placed.sizeIs == Four => turns }
+      solved match {
+        case Some(turns) =>
+          cube.turns(RubiksCubeMoveRotation.fromTurns(turns).map(r => RubiksCube3Move(RubiksCube3MoveType.Up, r)).map(_.generalize))
+        case None =>
+          // Find the first color with exactly one edge placed; order by ordinal to avoid infinite cycles
+          val rotation = correctlyPlaced.collect { case (turns, placed) if placed.sizeIs == 1 => turns -> placed.head }
+            .toSeq.minByOption((_, face) => RubiksCubeLayout.Colors(face).ordinal)
+            .flatMap((turns, face) =>
+              RubiksCubeMoveRotation.fromTurns(
+                turns + RubiksCubeMoveRotation.values.find(r => Z.withRotation(r.turns)(face) == RubiksCube3MoveType.Left.axis).map(_.turns).getOrElse(0)
+              )
+            ).map(_.turns).getOrElse(0)
+          solveThirdLayerEdgePlacementRecursive(cube.turns(algorithm.map(_.generalize.rotate(Z, rotation))))
+      }
+    }
+    solveThirdLayerEdgePlacementRecursive(cube)
+  }
+
+  private def solveThirdLayerEdgeOrientation(cube: RubiksCube): RubiksCube = {
+    val algorithm = RubiksCube3Move.parse("R' U' F' U F R")
+    def solveThirdLayerEdgeOrientationRecursive(cube: RubiksCube): RubiksCube = {
+      val correctlyPlaced = cross.map((x, y) => Vec(x, y, 0) -> (cube(Vec(x, y, Face)) == TopColor)).toMap
+      if correctlyPlaced.values.count(identity) == Four then
+        cube
+      else
+        val firstMove = RubiksCubeMoveRotation.values.find(r => Set(RubiksCube3MoveType.Left, RubiksCube3MoveType.Back).forall(m => correctlyPlaced(Z.withRotation(r.turns)(m.axis))))
+          .map(r => RubiksCube3Move(RubiksCube3MoveType.Up, r.inverse))
+        solveThirdLayerEdgeOrientationRecursive(cube.turns((firstMove.toSeq ++ algorithm).map(_.generalize)))
+    }
+    solveThirdLayerEdgeOrientationRecursive(cube)
   }
 
   private def solveSecondLayer(cube: RubiksCube): RubiksCube = {
     def solveSecondLayerRecursive(cube: RubiksCube): RubiksCube = {
-      println(cube)
-      println()
+      //println(cube)
+      //println()
       // Also indicates whether this edge is not a top edge
       val incorrectlyPlacedRight = cross.flatMap { (x, y) =>
         val frontFace = Vec(x, y, 0)
@@ -71,8 +117,8 @@ object Solver3 {
     def solveFirstFaceRecursive(cube: RubiksCube): RubiksCube = {
       evaluateFirstFace(cube) match
         case Some(seq) =>
-          println(seq)
-          println(cube)
+          //println(seq)
+          //println(cube)
           val better = (3 to 4).view.flatMap(exploreAll)
             .map(moves => cube.turns(moves.map(_.generalize)))
             .filter(cube => isGreater(evaluateFirstFace(cube), Some(seq)))
