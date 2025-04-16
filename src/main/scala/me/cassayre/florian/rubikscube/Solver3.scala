@@ -19,7 +19,61 @@ object Solver3 {
       .andThen(printDebug("After third layer edge orientation"))
       .andThen(solveThirdLayerEdgePlacement)
       .andThen(printDebug("After third layer edge placement"))
+      .andThen(solveThirdLayerCornerPlacement)
+      .andThen(printDebug("After third layer corner placement"))
+      .andThen(solveThirdLayerCornerOrientation)
+      .andThen(printDebug("After third layer corner orientation"))
       .apply(cube)
+  }
+
+  private def solveThirdLayerCornerOrientation(cube: RubiksCube): RubiksCube = {
+    val algorithm = RubiksCube3Move.parse("L' U' L U' L' U2 L R U R' U R U2 R'")
+    val fixed = corners.collect { case (x, y) if x < 0 => Vec(x, y, 0) }
+    def solveThirdLayerCornerOrientationRecursive(cube: RubiksCube): RubiksCube = {
+      // Enough to check one face
+      val oriented = corners.collect { case (x, y) if cube(Vec(x, y, Face)) == TopColor => Vec(x, y, 0) }
+      if oriented.sizeIs == Four then
+        cube
+      else
+        val rotation = RubiksCubeMoveRotation.All.map(_.map(_.turns).getOrElse(0))
+          .map(r => {
+            val keptAfterRotation = oriented.map(Z.withRotation(r)).intersect(fixed)
+            (r, keptAfterRotation)
+          })
+          .minByOption((_, kept) => (-kept.size, kept.map(_.y).minOption))
+          .map((r, _) => -r) // Not sure why this is negative, but works
+          .getOrElse(0)
+        solveThirdLayerCornerOrientationRecursive(cube.turns(algorithm.map(_.generalize.rotate(Z, rotation))))
+    }
+    solveThirdLayerCornerOrientationRecursive(cube)
+  }
+
+  private def solveThirdLayerCornerPlacement(cube: RubiksCube): RubiksCube = {
+    given Ordering[Color] = Ordering.by(_.ordinal)
+    def cornerAsPair(corner: Set[Color]): (Color, Color) = {
+      if (corner.sizeIs != 2) {
+        throw IllegalArgumentException()
+      }
+      (corner.min, corner.max)
+    }
+    def solveThirdLayerCornerPlacementRecursive(cube: RubiksCube): RubiksCube = {
+      val algorithm = RubiksCube3Move.parse("R' L U L' U' R U L U' L'")
+      val placements = corners.map((x, y) => Vec(x, y, 0) -> cornerAsPair(Set(cube(Vec(x * Face, y, 1)), cube(Vec(x, y * Face, 1)), cube(Vec(x, y, Face))).filter(_ != TopColor))).toMap
+      val targetPlacement = corners.map((x, y) => Vec(x, y, 0) -> cornerAsPair(Set((x, 0), (0, y)).map((x1, y1) => RubiksCubeLayout.Colors(Vec(x1, y1, 0))))).toMap
+      val correctlyPlaced = placements.collect { case (v, colors) if targetPlacement(v) == colors => v }.toSet
+      if correctlyPlaced.sizeIs == Four then
+        cube
+      else
+        assert(correctlyPlaced.sizeIs <= 1) // Either one or zero are well-placed
+        val keepCorner = correctlyPlaced.headOption
+        val rotation = keepCorner.flatMap(corner =>
+          RubiksCubeMoveRotation.All.map(_.map(_.turns).getOrElse(0))
+            .filter(r => Z.withRotation(r)(corner) == Vec(-1, 1, 0))
+            .minByOption(identity)
+        ).getOrElse(0)
+        solveThirdLayerCornerPlacementRecursive(cube.turns(algorithm.map(_.generalize.rotate(Z, rotation))))
+    }
+    solveThirdLayerCornerPlacementRecursive(cube)
   }
 
   private def solveThirdLayerEdgePlacement(cube: RubiksCube): RubiksCube = {
